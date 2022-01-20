@@ -17,6 +17,7 @@ class Config(BaseSettings):
     # Driver
     DRIVER_LOGGER_NAME: str = 'driver_agent'
     DRIVER_JID: str
+    DRIVER1_JID: str
     DRIVER_PASSWORD: str
     DRIVER_SUBSCRITPION_CHECK_PERIOD: float = 10.
     # Manager

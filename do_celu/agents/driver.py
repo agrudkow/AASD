@@ -141,6 +141,7 @@ class DriverAgent(agent.Agent):
             self.agent.presence.on_subscribed = self.on_subscribed
 
         async def run(self):
+            self._logger.info(f'test {self.presence.get_contacts()}')
             manager_jid = aioxmpp.JID.fromstr(self.agent._config.MANAGER_JID)
             if manager_jid not in self.agent.presence.get_contacts() \
                 or self.agent.presence.get_contact(manager_jid).get('subscription', None) == 'none':
@@ -208,9 +209,20 @@ if __name__ == '__main__':
             'y': 21.011905061692943,
         },
     )
+    driver1 = DriverAgent(
+        config.DRIVER1_JID,
+        config.DRIVER_PASSWORD,
+        capacity=50,
+        geolocation={
+            'x': 52.21905021340178,
+            'y': 21.011905061692943,
+        },
+    )
 
     future = driver.start()
+    future1 = driver1.start()
     future.result()
+    future1.result()
 
     while driver.is_alive():
         try:
@@ -219,5 +231,6 @@ if __name__ == '__main__':
             break
 
     driver.stop()
+    driver1.stop()
     logger.debug('Driver agent stopped')
     quit_spade()

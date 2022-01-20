@@ -9,7 +9,7 @@ from logging import Logger
 from spade import agent, quit_spade
 from spade.message import Message
 from do_celu.utils.performatives import Performatives
-from do_celu.behaviours import BaseOneShotBehaviour
+from do_celu.behaviours import BaseOneShotBehaviour, BaseCyclicBehaviour
 from do_celu.config import Config, get_config
 from do_celu.context import get_logger
 from do_celu.utils.job_exit_code import JobExitCode
@@ -46,20 +46,27 @@ class ManagerAgent(agent.Agent):
         def __init__(self,):
             super().__init__(LOGGER_NAME)
 
+        def on_available(self, jid, stanza):
+            self._logger.debug("[{}] Agent {} is available.".format(self.agent.name, jid.split("@")[0]))
+
+        def on_subscribed(self, jid):
+            self._logger.debug("[{}] Agent {} has accepted the subscription.".format(self.agent.name, jid.split("@")[0]))
+            self._logger.debug("[{}] Contacts List: {}".format(self.agent.name, self.agent.presence.get_contacts()))
+
+        def on_subscribe(self, jid):
+            self._logger.debug("[{}] Agent {} asked for subscription. Let's aprove it.".format(self.agent.name, jid.split("@")[0]))
+            self.presence.approve(jid)
+            self.presence.subscribe(jid)
+
         async def on_start(self):
             self._logger.debug('ReceiveWelcomeDriverMsg running...')
 
         async def run(self):
-            msg = await self.receive(timeout=30)
-            if msg:
-                self._logger.debug(f'ReceiveWelcomeDriverMsg msg received with body: {msg.body}')
-                # TODO add to driver list (contacts)
-                self.exit_code = JobExitCode.SUCCESS
-            else:
-                self.exit_code = JobExitCode.FAILURE
-
-        async def on_end(self):
-            self._logger.debug(f'ReceiveWelcomeDriverMsg ended with status: {self.exit_code.name}')
+            self._logger.info(f'test2 {self.presence.get_contacts()}')
+            self.presence.on_subscribe = self.on_subscribe
+            self.presence.on_subscribed = self.on_subscribed
+            self.presence.on_available = self.on_available
+            self.presence.set_available()
 
     class ReceiveAvailableDriversRequest(BaseOneShotBehaviour):
         agent: 'ManagerAgent'
@@ -264,10 +271,11 @@ class ManagerAgent(agent.Agent):
     async def setup(self):
         self._logger.info('ManagerAgent started')
 
+
         # TODO temp remove
         # self.add_behaviour(self.RequestDriverData())
         # self.add_behaviour(self.ReceiveAvailableDriversRequest())
-        # self.add_behaviour(self.ReceiveWelcomeDriverMsg())
+        self.add_behaviour(self.ReceiveWelcomeDriverMsg())
         # self.add_behaviour(self.ReceiveDriverData())
         # self.add_behaviour(self.RequestBestPaths())
         # self.add_behaviour(self.ReceiveBestPaths())
