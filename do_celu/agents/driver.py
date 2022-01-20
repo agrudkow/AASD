@@ -141,7 +141,7 @@ class DriverAgent(agent.Agent):
             self.agent.presence.on_subscribed = self.on_subscribed
 
         async def run(self):
-            self._logger.info(f'test {self.presence.get_contacts()}')
+            self._logger.info(f'test {self.presence.get_contacts()}') #TODO remove
             manager_jid = aioxmpp.JID.fromstr(self.agent._config.MANAGER_JID)
             if manager_jid not in self.agent.presence.get_contacts() \
                 or self.agent.presence.get_contact(manager_jid).get('subscription', None) == 'none':

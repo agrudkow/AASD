@@ -9,10 +9,11 @@ from logging import Logger
 from spade import agent, quit_spade
 from spade.message import Message
 from do_celu.utils.performatives import Performatives
-from do_celu.behaviours import BaseOneShotBehaviour, BaseCyclicBehaviour
+from do_celu.behaviours import BaseOneShotBehaviour
 from do_celu.config import Config, get_config
 from do_celu.context import get_logger
 from do_celu.utils.job_exit_code import JobExitCode
+from do_celu.messages.manager import ReceiveAvailableDriversRequestTemplate
 
 LOGGER_NAME = get_config().MANAGER_LOGGER_NAME
 
@@ -21,6 +22,7 @@ class ManagerAgent(agent.Agent):
     # Behaviours:
     receive_welcome_driver_msg: 'ReceiveWelcomeDriverMsg'
     receive_available_drivers_request: 'ReceiveAvailableDriversRequest'
+    receive_available_drivers_request_template: 'ReceiveAvailableDriversRequestTemplate'
     request_driver_data: 'RequestDriverData'
     receive_driver_data: 'ReceiveDriverData'
     request_best_paths: 'RequestBestPaths'
@@ -46,6 +48,9 @@ class ManagerAgent(agent.Agent):
         def __init__(self,):
             super().__init__(LOGGER_NAME)
 
+        async def on_start(self):
+            self._logger.debug('ReceiveWelcomeDriverMsg running...')
+
         def on_available(self, jid, stanza):
             self._logger.debug("[{}] Agent {} is available.".format(self.agent.name, jid.split("@")[0]))
 
@@ -58,11 +63,8 @@ class ManagerAgent(agent.Agent):
             self.presence.approve(jid)
             self.presence.subscribe(jid)
 
-        async def on_start(self):
-            self._logger.debug('ReceiveWelcomeDriverMsg running...')
-
         async def run(self):
-            self._logger.info(f'test2 {self.presence.get_contacts()}')
+            self._logger.info(f'test {self.presence.get_contacts()}')  # TODO remove
             self.presence.on_subscribe = self.on_subscribe
             self.presence.on_subscribed = self.on_subscribed
             self.presence.on_available = self.on_available
@@ -81,7 +83,10 @@ class ManagerAgent(agent.Agent):
             msg = await self.receive(timeout=30)
             if msg:
                 self._logger.debug(f'ReceiveAvailableDriversRequest msg received with body: {msg.body}')
-                # TODO trigger getting driver data (find all available drivers and RequestDriverData)
+                if not self.agent.has_behaviour(self.agent.request_driver_data):
+                    self._logger.debug('RequestDriverData renewed')
+                    await self.agent._setup_receive_available_drivers_request()
+                    self.agent.add_behaviour(self.agent.request_driver_data)
                 self.exit_code = JobExitCode.SUCCESS
             else:
                 self.exit_code = JobExitCode.FAILURE
@@ -99,10 +104,12 @@ class ManagerAgent(agent.Agent):
             self._logger.debug('RequestDriverData running...')
 
         async def run(self):
-            msg = Message(to='driver@localhost')  # TODO send to all available drivers
-            msg.set_metadata('performative', Performatives.REQUEST)
-            # msg.body = #TODO
-            await self.send(msg)
+            for contact in self.presence.get_contacts():
+                if 'driver' in str(contact):
+                    msg = Message(to=contact)
+                    msg.set_metadata('performative', Performatives.REQUEST)
+                    # msg.body = #TODO
+                    await self.send(msg)
             self.exit_code = JobExitCode.SUCCESS
 
         async def on_end(self):
@@ -273,8 +280,8 @@ class ManagerAgent(agent.Agent):
 
 
         # TODO temp remove
-        # self.add_behaviour(self.RequestDriverData())
-        # self.add_behaviour(self.ReceiveAvailableDriversRequest())
+        self.add_behaviour(self.RequestDriverData())
+        # self.add_behaviour(self.ReceiveAvailableDriversRequest()) # TODO fix client
         self.add_behaviour(self.ReceiveWelcomeDriverMsg())
         # self.add_behaviour(self.ReceiveDriverData())
         # self.add_behaviour(self.RequestBestPaths())
@@ -284,6 +291,10 @@ class ManagerAgent(agent.Agent):
         # self.add_behaviour(self.ReceiveClientPathProposal())
         # self.add_behaviour(self.InformDriverPathChange())
         # self.add_behaviour(self.AcceptClientPathProposal())
+
+    async def _setup_receive_available_drivers_request(self):
+        self.receive_available_drivers_request_template = ReceiveAvailableDriversRequestTemplate()
+        self.receive_available_drivers_request = self.ReceiveAvailableDriversRequest()
 
 
 if __name__ == '__main__':

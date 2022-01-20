@@ -69,7 +69,7 @@ class ClientAgent(agent.Agent):
             self._logger.debug('RequestAvailableConnections running...')
 
         async def run(self):
-            msg = Message(to=Config.MANAGER_JID)
+            msg = Message(to=self._config.MANAGER_JID)
             msg.set_metadata("performative", Performatives.REQUEST)
             msg.set_metadata("ontology", self._config.ONTOLOGY)  # Set the ontology of the message content
             msg.set_metadata("language", "JSON")
@@ -146,7 +146,7 @@ class ClientAgent(agent.Agent):
             self._logger.debug('ProposeChosenConnection running...')
 
         async def run(self):
-            msg = Message(to=Config.MANAGER_JID)
+            msg = Message(to=self._config.MANAGER_JID)
             msg.set_metadata("performative", Performatives.PROPOSE)
             msg.set_metadata("ontology", self._config.ONTOLOGY)
             msg.set_metadata("language", "JSON")
